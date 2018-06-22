@@ -1,4 +1,5 @@
 //Tomada inteligente
+//Projeto Integrador Oitavo Semestre
 //Grupo SM2 Polo Sao Jose dos Campos
 //Univesp
 
@@ -8,10 +9,11 @@
 char ssid[15];
 char password[15];
 
-const char *GScriptId = "AKfycbykjH5PVwp21Xv9VY3NDeWLVUQKP1fhSmaKzHvTS2RokKZzbG-K"; // "AKfycbyb2Ij6O43uf3rOgkaiK6qJiv2iIeROw_5RU5pSzvqVVegdCBA";
+//id do script do Google Spreadsheet
+const char *GScriptId = "AKfycbykjH5PVwp21Xv9VY3NDeWLVUQKP1fhSmaKzHvTS2RokKZzbG-K";
 
-// Push data on this interval
-const int dataPostDelay = 5000;  // 15 minutes = 15 * 60 * 1000
+// Intervalo de envio de dados
+const int dataPostDelay = 5000;
 
 const char* host = "script.google.com";
 const char* googleRedirHost = "script.googleusercontent.com";
@@ -19,16 +21,17 @@ const char* googleRedirHost = "script.googleusercontent.com";
 const int httpsPort =  443;
 HTTPSRedirect client(httpsPort);
 
-// Prepare the url (without the varying data)
+//url para metodo get
 String url = String("/macros/s/") + GScriptId + "/exec?";
 
 const char* fingerprint = "F0 5C 74 77 3F 6B 25 D7 3B 66 4D 43 2F 7E BC 5B E9 28 86 AD";
 
-// We will take analog input from A0 pin
+// Entrada da leitura analogica
 const int AnalogIn     = A0;
 
 unsigned long prevMillis = millis();
 
+//estados das tomadas ON/OFF
 bool estado1, estado2, estado3;
 
 
@@ -58,7 +61,7 @@ void setup() {
 
   wifi_connect();
 
-  Serial.print(String("Connecting to "));
+  Serial.print(String("Conectando em "));
   Serial.println(host);
 
   bool flag = false;
@@ -69,34 +72,33 @@ void setup() {
       break;
     }
     else
-      Serial.println("Connection failed. Retrying...");
+      Serial.println("Falha na conexao. Reconectando...");
   }
 
-  // Connection Status, 1 = Connected, 0 is not.
-  Serial.println("Connection Status: " + String(client.connected()));
+  //Status da conexao, 1 = Conectado, 0 nao conectado.
+  Serial.println("Status da conexao: " + String(client.connected()));
   Serial.flush();
 
   if (!flag) {
-    Serial.print("Could not connect to server: ");
+    Serial.print("Nao foi possivel conectar em: ");
     Serial.println(host);
-    Serial.println("Exiting...");
+    Serial.println("Saindo...");
     Serial.flush();
     return;
   }
 
-  // Data will still be pushed even certification don't match.
+  // Dados serao enviados mesmo se o certificado nao for compativel
   if (client.verify(fingerprint, host)) {
-    Serial.println("Certificate match.");
+    Serial.println("Certificado match.");
   } else {
-    Serial.println("Certificate mis-match");
+    Serial.println("Certificado mis-match");
   }
 }
 
-// This is the main method where data gets pushed to the Google sheet
+// Metodo de envio dos dados e recebimento da resposta do servidor
 void postData(String estado1, String estado2, String estado3, float corrente) {
-  //  HTTPSRedirect client(httpsPort);
   if (!client.connected()) {
-    Serial.println("Connecting to client again...");
+    Serial.println("Conectando ao servidor novamente...");
     client.connect(host, httpsPort);
   } else {
     String urlFinal = url + "tomada1=" + estado1 + "&tomada2=" + estado2 + "&tomada3=" + estado3 + "&corrente=" + String(corrente);
@@ -108,7 +110,7 @@ void postData(String estado1, String estado2, String estado3, float corrente) {
   }
 }
 
-// Continue pushing data at a given interval
+// Continuando a enviar os dados em intervalos definidos
 void loop() {
   unsigned long time = (millis() - prevMillis);
   if (time > dataPostDelay) {
@@ -119,7 +121,7 @@ void loop() {
     int data = analogRead(AnalogIn);
 
 
-    if (WiFi.status() == WL_CONNECTED && client.connected()) {
+    if (estado1 != null) {
       estado1 = client.isTomada1On();  //tomada 1
       estado2 = client.isTomada2On();  //tomada 2
       estado3 = client.isTomada3On();  //tomada 3
@@ -143,13 +145,12 @@ void loop() {
       digitalWrite(13, LOW);
     }
 
-    // Post these information
+    // Envio dos dados
     postData(String(estado1), String(estado2), String(estado3), data);
     Serial.print("enviado - tempo: ");
     Serial.println(time);
   }
   delay(100);
-  //  delay (dataPostDelay);
 }
 
 void wifi_connect() {
@@ -157,40 +158,37 @@ void wifi_connect() {
     return;
   }
 
-  Serial.println("Connecting to wifi");
+  Serial.println("Conectando ao wifi");
   Serial.flush();
 
   WiFi.begin(ssid, password);
 
-  // Long delay required especially soon after power on.
   delay(4000);
-  // Check if WiFi is already connected and if not, begin the WPS process.
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("\nAttempting WPS connection ...");
+    Serial.println("\nTentando coneccao WPS ...");
     WiFi.beginWPSConfig();
-    // Another long delay required.
     delay(3000);
     if (WiFi.status() == WL_CONNECTED) {
-      Serial.println("Connected!");
+      Serial.println("Conectado!");
       Serial.println(WiFi.SSID());
-      Serial.println(" IP address: ");
+      Serial.println(" IP: ");
       Serial.println(WiFi.localIP());
       char id[15];
       WiFi.SSID().toCharArray(id, 15);
       char psd[15];
       WiFi.psk().toCharArray(psd, 15);
-
+      //salvando os dados da conexao wifi
       EEPROM.put(0, id);
       EEPROM.put(15, psd);
     }
     else {
-      Serial.println("Connection failed!");
+      Serial.println("Falha na coneccao!");
     }
   }
   else {
-    Serial.println("Connected!");
+    Serial.println("Conectado!");
     Serial.println(WiFi.SSID());
-    Serial.println(" IP address: ");
+    Serial.println(" IP: ");
     Serial.println(WiFi.localIP());
   }
 }
