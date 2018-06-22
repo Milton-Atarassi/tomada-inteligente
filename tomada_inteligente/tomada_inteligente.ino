@@ -32,7 +32,9 @@ const int AnalogIn     = A0;
 unsigned long prevMillis = millis();
 
 //estados das tomadas ON/OFF
-bool estado1, estado2, estado3;
+bool estado1=false;
+bool estado2=false;
+bool estado3=false;
 
 
 void setup() {
@@ -112,6 +114,8 @@ void postData(String estado1, String estado2, String estado3, float corrente) {
 
 // Continuando a enviar os dados em intervalos definidos
 void loop() {
+    wifi_connect();
+
   unsigned long time = (millis() - prevMillis);
   if (time > dataPostDelay) {
     prevMillis = millis();
@@ -121,7 +125,7 @@ void loop() {
     int data = analogRead(AnalogIn);
 
 
-    if (estado1 != null) {
+    if (client.isTomada1On() != NULL) {
       estado1 = client.isTomada1On();  //tomada 1
       estado2 = client.isTomada2On();  //tomada 2
       estado3 = client.isTomada3On();  //tomada 3
@@ -158,11 +162,12 @@ void wifi_connect() {
     return;
   }
 
-  Serial.println("Conectando ao wifi");
+  Serial.println("\nConectando ao wifi");
   Serial.flush();
-
+  EEPROM.get(0, ssid);
+  EEPROM.get(15, password);
+  
   WiFi.begin(ssid, password);
-
   delay(4000);
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("\nTentando coneccao WPS ...");

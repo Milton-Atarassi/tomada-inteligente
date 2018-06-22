@@ -13,9 +13,9 @@ class HTTPSRedirect : public WiFiClientSecure {
     bool fpCheck = false;
     bool keepAlive = true;
     bool verboseInfo = false;
-    bool tomada1;
-    bool tomada2;
-    bool tomada3;
+    bool tomada1=NULL;
+    bool tomada2=NULL;
+    bool tomada3=NULL;
 
   public:
     HTTPSRedirect(const int, const char*, bool);
