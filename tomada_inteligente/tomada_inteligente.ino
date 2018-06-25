@@ -32,9 +32,9 @@ const int AnalogIn     = A0;
 unsigned long prevMillis = millis();
 
 //estados das tomadas ON/OFF
-bool estado1=false;
-bool estado2=false;
-bool estado3=false;
+bool estado1 = false;
+bool estado2 = false;
+bool estado3 = false;
 
 
 void setup() {
@@ -99,6 +99,7 @@ void setup() {
 
 // Metodo de envio dos dados e recebimento da resposta do servidor
 void postData(String estado1, String estado2, String estado3, float corrente) {
+  wifi_connect();
   if (!client.connected()) {
     Serial.println("Conectando ao servidor novamente...");
     client.connect(host, httpsPort);
@@ -112,45 +113,43 @@ void postData(String estado1, String estado2, String estado3, float corrente) {
   }
 }
 
-// Continuando a enviar os dados em intervalos definidos
+// Enviando os dados em intervalos definidos
 void loop() {
-    wifi_connect();
+  wifi_connect();
 
   unsigned long time = (millis() - prevMillis);
   if (time > dataPostDelay) {
     prevMillis = millis();
-
-    wifi_connect();
-
-    int data = analogRead(AnalogIn);
-
 
     if (client.isTomada1On() != NULL) {
       estado1 = client.isTomada1On();  //tomada 1
       estado2 = client.isTomada2On();  //tomada 2
       estado3 = client.isTomada3On();  //tomada 3
     }
+      Serial.println(" estado1:" + String(estado1) + " estado2:" + String(estado2) + " estado3:" + String(estado3));
+      if (!estado1) {
+        digitalWrite(14, LOW);
+      } else {
+        digitalWrite(14, HIGH);
+      }
 
-    if (estado1) {
-      digitalWrite(14, HIGH);
-    } else {
-      digitalWrite(14, LOW);
-    }
+      if (!estado2) {
+        digitalWrite(12, LOW);
+      } else {
+        digitalWrite(12, HIGH);
+      }
 
-    if (estado2) {
-      digitalWrite(12, HIGH);
-    } else {
-      digitalWrite(12, LOW);
-    }
+      if (!estado3) {
+        digitalWrite(13, LOW);
+      } else {
+        digitalWrite(13, HIGH);
+      }
+    
 
-    if (estado3) {
-      digitalWrite(13, HIGH);
-    } else {
-      digitalWrite(13, LOW);
-    }
+    float corrente = correnteRMS();
 
     // Envio dos dados
-    postData(String(estado1), String(estado2), String(estado3), data);
+    postData(String(estado1), String(estado2), String(estado3), corrente);
     Serial.print("enviado - tempo: ");
     Serial.println(time);
   }
@@ -166,7 +165,7 @@ void wifi_connect() {
   Serial.flush();
   EEPROM.get(0, ssid);
   EEPROM.get(15, password);
-  
+
   WiFi.begin(ssid, password);
   delay(4000);
   if (WiFi.status() != WL_CONNECTED) {
@@ -196,4 +195,31 @@ void wifi_connect() {
     Serial.println(" IP: ");
     Serial.println(WiFi.localIP());
   }
+}
+
+float correnteRMS() {
+
+  const unsigned long sampleTime = 100UL;  
+  const unsigned long numSamples = 50UL;
+  const unsigned long sampleInterval = sampleTime / numSamples;
+  const int adc_zero = 510;
+  unsigned long currentAcc = 0;
+  unsigned int count = 0;
+  unsigned long prevMillis = millis() - sampleInterval ;
+  while (count < numSamples)
+  {
+    if (micros() - prevMillis >= sampleInterval)
+    {
+      int adc_raw = analogRead(AnalogIn) - adc_zero;
+      currentAcc += (unsigned long)(adc_raw * adc_raw);
+      ++count;
+      prevMillis += sampleInterval;
+      Serial.println(currentAcc);
+    }
+    delay(1);
+  }
+
+  float rms = sqrt((float)currentAcc / (float)numSamples) * (75.7576 / 1024.0);
+  Serial.println("corrente: " + String(rms)+"numero de medidas"+count);
+  return rms;
 }
